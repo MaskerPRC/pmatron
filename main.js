@@ -1,5 +1,5 @@
-import path from 'path';
-import express from 'express';
+import { app, BrowserWindow, protocol } from 'electron'
+import  path from 'path'
 import {loadNodeRuntime, createNodeFsMountHandler} from '@php-wasm/node';
 import {
     PHP,
@@ -8,30 +8,22 @@ import {
     proxyFileSystem
 } from '@php-wasm/universal';
 import {wordPressRewriteRules, getFileNotFoundActionForWordPress} from '@wp-playground/wordpress';
-import {rootCertificates} from 'tls';
-import compressible from 'compressible';
-import compression from 'compression';
 
-function shouldCompress( _, res ) {
-    const types = res.getHeader( 'content-type' );
-    const type = Array.isArray( types ) ? types[ 0 ] : types;
-    return type && compressible( type );
-}
-
-// 配置环境变量
+// Configuration for the PHP environment
 const environment = {
     php: {
-        version: '8.3', // 指定 PHP 版本
+        version: '8.3',
     },
     server: {
+        scheme: 'phpapp', // Custom protocol scheme
         host: 'localhost',
-        port: 3043,
-        path: path.resolve('./phpMyAdmin'), // 文档根目录
-        mount: '/phpMyAdmin', // 挂载根目录
-        debug: true, // 是否启用调试
+        path: path.resolve('./phpMyAdmin'),
+        mount: '/phpMyAdmin',
+        debug: true,
     }
 };
 
+// Initialize PHP instance with necessary configurations
 async function getPHPInstance(isPrimary, requestHandler) {
     const id = await loadNodeRuntime(environment.php.version);
     const php = new PHP(id);
@@ -41,25 +33,19 @@ async function getPHPInstance(isPrimary, requestHandler) {
         memory_limit: '2048M',
         disable_functions: 'openssl_random_pseudo_bytes',
         allow_url_fopen: '1',
-        'openssl.cafile': '/internal/shared/ca-bundle.crt',
     });
 
     return {php, runtimeId: id};
 }
 
-const requestBodyToBytes = async (req) => {
-    return await new Promise((resolve) => {
-        const body = [];
-        req.on('data', (chunk) => {
-            body.push(chunk);
-        });
-        req.on('end', () => {
-            resolve(Buffer.concat(body));
-        });
-    });
+// Convert request body to bytes
+const requestBodyToBytes = async (request) => {
+    const buffer = Buffer.from(await request.arrayBuffer());
+    return buffer;
 }
 
-async function handleRequest() {
+// Initialize PHP handler
+async function initializePHPHandler() {
     const requestHandler = new PHPRequestHandler({
         phpFactory: async ({isPrimary, requestHandler: reqHandler}) => {
             const {php} = await getPHPInstance(isPrimary, reqHandler);
@@ -67,76 +53,114 @@ async function handleRequest() {
                 proxyFileSystem(await requestHandler.getPrimaryPhp(), php, [
                     '/tmp',
                     requestHandler.documentRoot,
-                    '/internal/shared',
                 ]);
             }
             if (reqHandler) {
                 php.requestHandler = reqHandler;
             }
-
             return php;
         },
         documentRoot: environment.server.mount,
-        absoluteUrl: `http://${environment.server.host}:${environment.server.port}`,
+        absoluteUrl: `${environment.server.scheme}://${environment.server.host}`,
         rewriteRules: wordPressRewriteRules,
         getFileNotFoundAction: getFileNotFoundActionForWordPress,
     });
+
     const php = await requestHandler.getPrimaryPhp();
 
-    // 挂载文件系统
+    // Mount filesystem
     php.mkdir(environment.server.mount);
     php.mount(environment.server.mount, createNodeFsMountHandler(environment.server.path));
     php.chdir(environment.server.mount);
-    php.writeFile('/internal/shared/ca-bundle.crt', rootCertificates.join('\n'));
 
     return php;
 }
+// Register custom protocol
+protocol.registerSchemesAsPrivileged([
+    { scheme: environment.server.scheme, privileges: { standard: true, secure: true } }
+]);
 
-((async ()=>{
-    const php = await handleRequest();
 
-    const app = express();
-    app.use( compression( { filter: shouldCompress } ) );
-    app.use( '/', async ( req, res ) => {
-        try {
-            const requestHeaders = {};
-            if (req.rawHeaders && req.rawHeaders.length) {
-                for (let i = 0; i < req.rawHeaders.length; i += 2) {
-                    requestHeaders[req.rawHeaders[i].toLowerCase()] = req.rawHeaders[i + 1];
-                }
-            }
-
-            const data = {
-                url: req.url,
-                headers: requestHeaders,
-                method: req.method,
-                body: await requestBodyToBytes(req),
-            };
-
-            const resp = await php.requestHandler.request( data );
-
-            // 输出调试信息
-            if (environment.server.debug) {
-                // console.log('Request:', request);
-                // console.log('Response:', responseFromPhp);
-            }
-
-            res.statusCode = resp.httpStatusCode;
-            Object.keys( resp.headers ).forEach( ( key ) => {
-                res.setHeader( key, resp.headers[ key ] );
-            } );
-            res.end( resp.bytes );
-        } catch (error) {
-            console.error('Error handling request:', error);
-            res.statusCode = 500;
-            res.end('Internal Server Error');
+async function createWindow() {
+    const win = new BrowserWindow({
+        width: 1024,
+        height: 768,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
         }
     });
 
-    // 启动服务器
-    app.listen(environment.server.port, () => {
-        console.log(`\nPHP server is listening on ${environment.server.host}:${environment.server.port}\n`);
-        console.error(`Open "\x1b[33mhttp://${environment.server.host}:${environment.server.port} ${environment.server.mount}\x1b[0m" in your browser...`);
+    // Initialize PHP handler
+    const php = await initializePHPHandler();
+
+    // Register protocol handler
+    protocol.handle(environment.server.scheme, async (request) => {
+        try {
+            // Parse request information
+            const url = new URL(request.url);
+            const headers = {};
+            request.headers.forEach((value, key) => {
+                headers[key.toLowerCase()] = value;
+            });
+
+            // Prepare request data for PHP
+            const requestData = {
+                url: url.pathname + url.search,
+                headers: headers,
+                method: request.method,
+                body: await requestBodyToBytes(request),
+            };
+
+            // Process request through PHP handler
+            const response = await php.requestHandler.request(requestData);
+
+            if (environment.server.debug) {
+                console.log('Request:', {
+                    url: url.toString(),
+                    method: request.method,
+                    headers: headers
+                });
+                console.log('Response:', {
+                    status: response.httpStatusCode,
+                    headers: response.headers
+                });
+            }
+
+            // Return response
+            return new Response(response.bytes, {
+                status: response.httpStatusCode,
+                headers: response.headers
+            });
+        } catch (error) {
+            console.error('Error handling request:', error);
+            return new Response('Internal Server Error', {
+                status: 500,
+                headers: { 'Content-Type': 'text/plain' }
+            });
+        }
     });
 
-})())
+    // Load initial page
+    await win.loadURL(`${environment.server.scheme}://${environment.server.host}/`);
+
+    if (environment.server.debug) {
+        win.webContents.openDevTools();
+    }
+}
+
+app.whenReady().then(async () => {
+    await createWindow();
+
+    app.on('activate', async () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            await createWindow();
+        }
+    });
+});
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
+});
