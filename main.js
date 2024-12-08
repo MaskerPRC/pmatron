@@ -9,6 +9,15 @@ import {
     proxyFileSystem
 } from '@php-wasm/universal';
 import {wordPressRewriteRules, getFileNotFoundActionForWordPress} from '@wp-playground/wordpress';
+import {rootCertificates} from 'tls';
+import compressible from 'compressible';
+import compression from 'compression';
+
+function shouldCompress( _, res ) {
+    const types = res.getHeader( 'content-type' );
+    const type = Array.isArray( types ) ? types[ 0 ] : types;
+    return type && compressible( type );
+}
 
 // Configuration for the PHP environment
 const environment = {
@@ -49,6 +58,7 @@ async function getPHPInstance(isPrimary, requestHandler) {
         memory_limit: '2048M',
         disable_functions: 'openssl_random_pseudo_bytes',
         allow_url_fopen: '1',
+        'openssl.cafile': '/internal/shared/ca-bundle.crt',
     });
 
     return {php, runtimeId: id};
@@ -56,8 +66,7 @@ async function getPHPInstance(isPrimary, requestHandler) {
 
 // Convert request body to bytes
 const requestBodyToBytes = async (request) => {
-    const buffer = Buffer.from(await request.arrayBuffer());
-    return buffer;
+    return Buffer.from(await request.arrayBuffer());
 }
 
 // Initialize PHP handler
@@ -86,6 +95,8 @@ async function initializePHPHandler() {
     php.mkdir(environment.server.mount);
     php.mount(environment.server.mount, createNodeFsMountHandler(environment.server.path));
     php.chdir(environment.server.mount);
+    php.writeFile('/internal/shared/ca-bundle.crt', rootCertificates.join('\n'));
+
 
     return php;
 }
