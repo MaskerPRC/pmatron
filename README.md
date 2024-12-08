@@ -91,9 +91,8 @@ npm run build
 
 ## 📈 Project Growth
 
-<div align="center">
-    <img src="/api/placeholder/800/300" alt="Star History Chart" />
-</div>
+
+[![Star History Chart](https://api.star-history.com/svg?repos=MaskerPRC/pmatron&type=Date)](https://star-history.com/#MaskerPRC/pmatron&Date)
 
 Our project has seen steady growth since its inception, thanks to our amazing community of contributors and users.
 
