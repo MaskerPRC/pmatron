@@ -1,5 +1,6 @@
-import { app, BrowserWindow, protocol } from 'electron'
-import  path from 'path'
+import {app, BrowserWindow, protocol} from 'electron'
+import path from 'path'
+import fs from 'fs'
 import {loadNodeRuntime, createNodeFsMountHandler} from '@php-wasm/node';
 import {
     PHP,
@@ -15,13 +16,28 @@ const environment = {
         version: '8.3',
     },
     server: {
-        scheme: 'phpapp', // Custom protocol scheme
+        scheme: 'phpapp',
         host: 'localhost',
         path: path.resolve('./phpMyAdmin'),
         mount: '/phpMyAdmin',
         debug: true,
     }
 };
+
+// Create preload script content
+const preloadScript = `
+    const { contextBridge, ipcRenderer } = require('electron');
+    const jQuery = require('jquery');
+    
+    // Make jQuery available globally
+    window.jQuery = jQuery;
+    window.$ = jQuery;
+    
+    // Add other required globals
+    window.AJAX = {
+        cache: true
+    };
+`;
 
 // Initialize PHP instance with necessary configurations
 async function getPHPInstance(isPrimary, requestHandler) {
@@ -67,42 +83,86 @@ async function initializePHPHandler() {
     });
 
     const php = await requestHandler.getPrimaryPhp();
-
-    // Mount filesystem
     php.mkdir(environment.server.mount);
     php.mount(environment.server.mount, createNodeFsMountHandler(environment.server.path));
     php.chdir(environment.server.mount);
 
     return php;
 }
+
+// Create temporary preload script file
+const preloadPath = './preload.js';
+fs.writeFileSync(preloadPath, preloadScript);
+
 // Register custom protocol
 protocol.registerSchemesAsPrivileged([
-    { scheme: environment.server.scheme, privileges: { standard: true, secure: true } }
+    {
+        scheme: environment.server.scheme,
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            corsEnabled: true,
+            stream: true
+        }
+    }
 ]);
-
-
 async function createWindow() {
+
     const win = new BrowserWindow({
         width: 1024,
         height: 768,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: preloadPath,
+            webSecurity: false, // Note: In production, consider security implications
+            allowRunningInsecureContent: true
         }
     });
 
     // Initialize PHP handler
     const php = await initializePHPHandler();
 
+    // Content Security Policy middleware
+    const cspMiddleware = (headers) => {
+        const csp = [
+            "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${environment.server.scheme}://${environment.server.host}`,
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob:",
+            `connect-src 'self' ${environment.server.scheme}://${environment.server.host}`,
+        ].join('; ');
+
+        headers['Content-Security-Policy'] = csp;
+        return headers;
+    };
+
     // Register protocol handler
     protocol.handle(environment.server.scheme, async (request) => {
         try {
-            // Parse request information
             const url = new URL(request.url);
             const headers = {};
             request.headers.forEach((value, key) => {
                 headers[key.toLowerCase()] = value;
             });
+
+            // Handle static files (including JavaScript files)
+            if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+                const filePath = path.join(environment.server.path, url.pathname);
+                try {
+                    const content = fs.readFileSync(filePath);
+                    const contentType = url.pathname.endsWith('.js') ? 'application/javascript' : 'text/css';
+                    return new Response(content, {
+                        headers: {
+                            'Content-Type': contentType,
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                } catch (err) {
+                    console.error('Static file error:', err);
+                }
+            }
 
             // Prepare request data for PHP
             const requestData = {
@@ -127,16 +187,17 @@ async function createWindow() {
                 });
             }
 
-            // Return response
+            // Apply security headers and return response
+            const finalHeaders = cspMiddleware({...response.headers});
             return new Response(response.bytes, {
                 status: response.httpStatusCode,
-                headers: response.headers
+                headers: finalHeaders
             });
         } catch (error) {
             console.error('Error handling request:', error);
             return new Response('Internal Server Error', {
                 status: 500,
-                headers: { 'Content-Type': 'text/plain' }
+                headers: {'Content-Type': 'text/plain'}
             });
         }
     });
@@ -147,6 +208,15 @@ async function createWindow() {
     if (environment.server.debug) {
         win.webContents.openDevTools();
     }
+
+    // Cleanup preload script on window close
+    win.on('closed', () => {
+        try {
+            fs.unlinkSync(preloadPath);
+        } catch (err) {
+            console.error('Error cleaning up preload script:', err);
+        }
+    });
 }
 
 app.whenReady().then(async () => {
