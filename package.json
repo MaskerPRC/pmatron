@@ -1,0 +1,25 @@
+{
+  "name": "pmatron",
+  "version": "1.0.0",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "electron.cmd main.js"
+  },
+  "private": true,
+  "dependencies": {
+    "@php-wasm/node": "^1.0.14",
+    "@php-wasm/scopes": "^1.0.14",
+    "@php-wasm/universal": "^1.0.14",
+    "@wp-playground/wordpress": "^1.0.14",
+    "compressible": "^2.0.18",
+    "compression": "^1.7.5",
+    "electron": "^30.1.0",
+    "express": "^4.19.2",
+    "file-url": "^4.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
