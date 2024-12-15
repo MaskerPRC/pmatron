@@ -22,6 +22,7 @@
     "http-proxy": "^1.18.1",
     "https-proxy-agent": "^7.0.6",
     "node-fetch": "^3.3.2",
+    "ssh2": "^1.16.0",
     "ws": "^8.18.0"
   },
   "keywords": [],
