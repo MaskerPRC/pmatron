@@ -37,6 +37,9 @@ class TunnelManager {
             const stream = await new Promise((resolve, reject) => {
                 client.forwardOut('127.0.0.1', 0, host, port, (err, stream) => {
                     if (err) return reject(err);
+                    // 调整窗口大小和包大小
+                    stream.window = 1024 * 1024; // 1 MB
+                    stream.packetSize = 32 * 1024; // 32 KB
                     resolve(stream);
                 });
             });

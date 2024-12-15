@@ -10,10 +10,24 @@ import {debugLog} from './utils.js';
 import {readFileSync} from 'fs';
 import TunnelManager from "./ssh-tunnel/tunnel-manager.js";
 import { logger } from '@php-wasm/logger';
+import { Writable } from 'stream';
+
+// 创建一个可写流，将数据发送到 WebSocket 客户端
+class WebSocketWritable extends Writable {
+    constructor(ws, options) {
+        super(options);
+        this.ws = ws;
+    }
+
+    _write(chunk, encoding, callback) {
+        this.ws.send(chunk, callback);
+    }
+}
 
 function log(...args) {
     debugLog('[WS Server]', ...args);
 }
+
 // 设置 PerformanceObserver
 const perfObserver = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {
@@ -21,14 +35,12 @@ const perfObserver = new PerformanceObserver((items) => {
     });
     performance.clearMarks();
 });
+
 perfObserver.observe({ entryTypes: ['measure'] });
 
 const lookup = util.promisify(dns.lookup);
 
-function prependByte(
-    chunk,
-    byte
-) {
+function prependByte(chunk, byte) {
     if (typeof chunk === 'string') {
         chunk = String.fromCharCode(byte) + chunk;
     } else if (
@@ -175,7 +187,7 @@ async function onWsConnect(client, request) {
         const commandType = msg[0];
         clientLog('处理消息', { commandType }, msg);
         if (commandType === COMMAND_CHUNK) {
-            target.write(msg.slice(1));
+            target.write(Buffer.from(msg.slice(1)));
         } else if (commandType === COMMAND_SET_SOCKETOPT) {
             const SOL_SOCKET = 1;
             const SO_KEEPALIVE = 9;
@@ -266,21 +278,18 @@ async function onWsConnect(client, request) {
 
         // 设置事件监听器
         performance.mark(`${connectionId}-setup-events-start`);
-        target.on('data', function (data) {
-            performance.mark(`${connectionId}-data-received-start`);
-            try {
-                client.send(data);
-            } catch (e) {
-                clientLog('客户端已关闭，清理目标连接');
-                target.end();
-            }
-            performance.mark(`${connectionId}-data-received-end`);
-            // 测量数据接收时间
-            try {
-                performance.measure(`${connectionId}-data-received`, `${connectionId}-data-received-start`, `${connectionId}-data-received-end`);
-            } catch (e) {
-                log(`[${connectionId}] Performance Measure Error:`, e.message);
-            }
+        const wsWritable = new WebSocketWritable(client, { highWaterMark: 64 * 1024 }); // 64 KB
+
+        // 使用管道连接 SSH 流到 WebSocket 可写流，并处理背压
+        sshStream.pipe(wsWritable).on('error', (err) => {
+            log(`[${connectionId}] Pipe 错误:`, err.message);
+            client.close(3000);
+            sshStream.end();
+        });
+
+        // 监听 WebSocket 关闭事件，关闭 SSH 流
+        client.on('close', () => {
+            sshStream.end();
         });
 
         target.on('close', function () {
