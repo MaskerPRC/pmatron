@@ -1,17 +1,25 @@
 import {app, BrowserWindow, protocol} from 'electron'
 import path from 'path'
 import fs from 'fs'
-import {loadNodeRuntime, createNodeFsMountHandler} from '@php-wasm/node';
+import {
+    createNodeFsMountHandler,
+    getPHPLoaderModule,
+} from '@php-wasm/node';
+
+import {
+    withNetworking
+} from './networking/with-networking.js'
 import {
     PHP,
     PHPRequestHandler,
     setPhpIniEntries,
-    proxyFileSystem
+    proxyFileSystem,
+    loadPHPRuntime,
 } from '@php-wasm/universal';
 import {wordPressRewriteRules, getFileNotFoundActionForWordPress} from '@wp-playground/wordpress';
 import {rootCertificates} from 'tls';
 import compressible from 'compressible';
-import compression from 'compression';
+
 
 function shouldCompress( _, res ) {
     const types = res.getHeader( 'content-type' );
@@ -29,7 +37,7 @@ const environment = {
         host: 'localhost',
         path: path.resolve('./phpMyAdmin'),
         mount: '/phpMyAdmin',
-        debug: true,
+        debug: false,
     }
 };
 
@@ -47,6 +55,22 @@ const preloadScript = `
         cache: true
     };
 `;
+
+export async function loadNodeRuntime(
+    phpVersion,
+    options = {}
+) {
+    const emscriptenOptions = {
+        quit: function (code, error) {
+            throw error;
+        },
+        ...(options.emscriptenOptions || {}),
+    };
+    return await loadPHPRuntime(
+        await getPHPLoaderModule(phpVersion),
+        await withNetworking(emscriptenOptions)
+    );
+}
 
 // Initialize PHP instance with necessary configurations
 async function getPHPInstance(isPrimary, requestHandler) {
@@ -102,7 +126,7 @@ async function initializePHPHandler() {
 }
 
 // Create temporary preload script file
-const preloadPath = './preload.js';
+const preloadPath = path.resolve("./src/preload.js");
 fs.writeFileSync(preloadPath, preloadScript);
 
 // Register custom protocol
@@ -245,3 +269,4 @@ app.on('window-all-closed', () => {
         app.quit();
     }
 });
+
