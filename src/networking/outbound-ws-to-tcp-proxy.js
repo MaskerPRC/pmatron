@@ -8,6 +8,7 @@ import {Client} from 'ssh2';
 import {WebSocketServer } from 'ws';
 import {debugLog} from './utils.js';
 import {readFileSync} from 'fs';
+import TunnelManager from "./ssh-tunnel/tunnel-manager.js";
 
 function log(...args) {
     debugLog('[WS Server]', ...args);
@@ -114,32 +115,14 @@ export function initOutboundWebsocketProxyServer(
 
 // 配置 SSH 隧道的信息
 const sshConfig = {
+    algorithms: {
+        cipher: ['aes128-ctr', 'aes192-ctr', 'aes256-ctr'], // 选择较快的加密算法
+    },
+    compress: true, // 启用压缩
+    keepaliveInterval: 10000, // 每10秒发送一次 Keep-Alive 数据
 };
-const LOCAL_SSH_PORT = 5000;
-
-function createSshTunnel(host, port) {
-    return new Promise((resolve, reject) => {
-        const conn = new Client();
-        conn.on('ready', () => {
-            console.log('SSH Connection established');
-            conn.forwardOut(
-                '127.0.0.1', // 源地址，可以是任意值
-                0,           // 源端口，可以是任意值
-                host,        // 目标主机
-                port,        // 目标端口
-                (err, stream) => {
-                    if (err) {
-                        conn.end();
-                        return reject(err);
-                    }
-                    resolve(stream);
-                }
-            );
-        }).on('error', (err) => {
-            reject(err);
-        }).connect(sshConfig);
-    });
-}
+// 创建 TunnelManager 实例
+const tunnelManager = new TunnelManager(sshConfig);
 
 // Handle new WebSocket client
 async function onWsConnect(client, request) {
@@ -218,7 +201,7 @@ async function onWsConnect(client, request) {
     client.on('error', function (a) {
         clientLog('WebSocket client error: ' + a);
         if (target) {
-        target.end();
+            target.end();
         }
     });
 
@@ -245,30 +228,36 @@ async function onWsConnect(client, request) {
         'Opening a socket connection to ' + reqTargetIp + ':' + reqTargetPort
     );
 
-    // 建立 SSH 隧道
-    const sshStream = await createSshTunnel(reqTargetIp, reqTargetPort);
-    target = sshStream;
+    try {
+        // 通过 TunnelManager 获取 SSH 隧道
+        const sshStream = await tunnelManager.getTunnel(reqTargetIp, reqTargetPort);
+        target = sshStream;
 
         target.on('data', function (data) {
             try {
                 client.send(data);
             } catch (e) {
-                clientLog('Client closed, cleaning up target');
+                clientLog('客户端已关闭，清理目标连接');
                 target.end();
             }
         });
 
-    target.on('close', function () {
-            clientLog('target disconnected');
+        target.on('close', function () {
+            clientLog('目标连接已断开');
             client.close();
         });
 
         target.on('error', function (e) {
-            clientLog('target connection error', e);
+            clientLog('目标连接错误', e);
             target.end();
             client.close(3000);
         });
 
-    clientLog('Connected to target via SSH tunnel');
-    flushMessagesQueue();
+        clientLog('通过共享的 SSH 隧道连接到目标');
+        flushMessagesQueue();
+    } catch (err) {
+        clientLog('SSH 隧道错误:', err);
+        client.send([]);
+        client.close(3000);
+    }
 }

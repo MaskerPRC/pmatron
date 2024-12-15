@@ -4,7 +4,7 @@
   "main": "src/main.js",
   "type": "module",
   "scripts": {
-    "test": "electron.cmd src/main.js"
+    "test": "chcp 65001 & electron.cmd src/main.js"
   },
   "private": true,
   "dependencies": {
