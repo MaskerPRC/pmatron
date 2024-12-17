@@ -44,9 +44,9 @@ const environment = {
 // Create preload script content
 const preloadScript = `
     const { contextBridge, ipcRenderer } = require('electron');
-    // preload.js
+
     contextBridge.exposeInMainWorld('api', {
-        updateConfig: (username, password) => ipcRenderer.send('update-config', { username, password }),
+        updateConfig: (credentials) => ipcRenderer.send('update-config', credentials),
         onUpdateSuccess: (callback) => ipcRenderer.on('update-config-success', callback)
     });
 `;
@@ -256,8 +256,8 @@ async function createWindow() {
     await win.loadURL(`${environment.server.scheme}://${environment.server.host}/login.html`);
 
     if (environment.server.debug) {
-        win.webContents.openDevTools();
     }
+    win.webContents.openDevTools();
 
     // Cleanup preload script on window close
     win.on('closed', () => {
@@ -268,19 +268,19 @@ async function createWindow() {
         }
     });
 
-    // 监听来自渲染进程的更新config请求
-    ipcMain.on('update-config', (event, { username, password }) => {
+    // 监听来自渲染进程的更新配置请求
+    ipcMain.on('update-config', (event, { hostname, username, password }) => {
         try {
             const configFilePath = path.join(environment.server.path, 'config.inc.php');
             let configContent = fs.readFileSync(configFilePath, 'utf-8');
 
-            // 简单替换，这里假设原本的 $cfg['Servers'][$i]['user'] 、$cfg['Servers'][$i]['password'] 格式固定存在
+            configContent = configContent.replace(/\$cfg\['Servers'\]\[\$i\]\['host'\] = '.*?';/, `$cfg['Servers'][$i]['host'] = '${hostname}';`);
             configContent = configContent.replace(/\$cfg\['Servers'\]\[\$i\]\['user'\] = '.*?';/, `$cfg['Servers'][$i]['user'] = '${username}';`);
             configContent = configContent.replace(/\$cfg\['Servers'\]\[\$i\]\['password'\] = '.*?';/, `$cfg['Servers'][$i]['password'] = '${password}';`);
 
             fs.writeFileSync(configFilePath, configContent, 'utf-8');
 
-            // 通知渲染进程更新成功（可选）
+            // 通知渲染进程更新成功
             event.sender.send('update-config-success');
 
             // 更新完成后跳转至根页面

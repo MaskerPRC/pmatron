@@ -1,64 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <title>PMAtron 登录</title>
     <style>
-        /* 全局样式 */
+        /* 基础重置 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 背景样式 */
         body {
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
-            background-color: #007bff; /* phpMyAdmin 主要背景色为蓝色 */
+            background-color: #f5f5f5; /* 更柔和的背景色 */
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
         }
 
         /* 登录表单容器 */
-        #loginform {
+        .login-container {
             background-color: #ffffff;
-            padding: 50px 40px;
-            border: 1px solid #cccccc;
+            padding: 40px 30px;
+            border: 1px solid #e0e0e0;
             width: 600px;
-            box-sizing: border-box;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-radius: 0; /* 非圆角 */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px; /* 圆角边框 */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .login-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
         }
 
         /* 标题样式 */
-        #loginform h1 {
-            margin-bottom: 30px;
-            font-size: 24px;
+        .login-container h1 {
+            margin-bottom: 20px;
+            font-size: 28px;
             color: #007bff;
-            font-weight: bold;
+            text-align: center;
         }
 
-        /* 表单标签 */
-        #loginform label {
+        /* 表单元素 */
+        .login-container label {
             display: block;
             text-align: left;
-            margin-bottom: 8px;
-            font-weight: bold;
+            margin-bottom: 5px;
+            font-weight: 500;
             color: #333333;
             font-size: 14px;
         }
 
-        /* 输入框样式 */
-        #loginform input[type="text"],
-        #loginform input[type="password"] {
+        .login-container input[type="text"],
+        .login-container input[type="password"] {
             width: 100%;
-            padding: 12px 10px;
+            padding: 10px 12px;
             margin-bottom: 20px;
             border: 1px solid #cccccc;
-            box-sizing: border-box;
+            border-radius: 4px;
             font-size: 14px;
-            border-radius: 0; /* 非圆角 */
+            transition: border-color 0.3s ease;
+        }
+
+        .login-container input[type="text"]:focus,
+        .login-container input[type="password"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        /* 自定义下拉菜单容器 */
+        .custom-select-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+            user-select: none;
+        }
+
+        .custom-select {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        .custom-select:focus {
+            border-color: #007bff;
+        }
+
+        .custom-select .selected {
+            font-size: 14px;
+            color: #333333;
+        }
+
+        .custom-select .arrow {
+            font-size: 12px;
+            color: #666666;
+            transition: transform 0.3s ease;
+        }
+
+        .custom-select.open .arrow {
+            transform: rotate(180deg);
+        }
+
+        .custom-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            border-top: none;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .custom-options.open {
+            display: block;
+        }
+
+        .custom-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333333;
+            transition: background-color 0.3s ease;
+        }
+
+        .custom-option:hover {
+            background-color: #f0f0f0;
         }
 
         /* 确定按钮样式 */
-        #loginform button {
+        .login-container button {
             width: 100%;
             padding: 12px;
             background-color: #007bff;
@@ -66,62 +151,401 @@
             color: white;
             font-size: 16px;
             cursor: pointer;
-            border-radius: 0; /* 非圆角 */
+            border-radius: 4px;
             transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        #loginform button:hover {
+        .login-container button:hover {
             background-color: #0056b3;
         }
 
-        /* 表情样式 */
-        #emoji {
-            font-size: 24px;
-            margin-left: 10px;
+        /* 图标样式 */
+        .login-container .icon {
+            margin-right: 8px;
+            font-size: 18px;
         }
 
         /* 响应式设计 */
-        @media (max-width: 400px) {
-            #loginform {
+        @media (max-width: 480px) {
+            .login-container {
                 width: 90%;
                 padding: 30px 20px;
             }
 
-            #loginform h1 {
-                font-size: 20px;
+            .login-container h1 {
+                font-size: 24px;
             }
 
-            #loginform button {
+            .login-container button {
                 font-size: 14px;
             }
         }
+
+        /* 模态对话框样式 */
+        .modal {
+            display: none; /* 默认隐藏 */
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5); /* 半透明背景 */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% 从顶部居中 */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px;
+            border-radius: 8px;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+            text-align: center;
+            color: #333;
+        }
+
+        .modal-content input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 15px;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .modal-content button {
+            width: 48%;
+            padding: 8px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .modal-content button:hover {
+            background-color: #0056b3;
+        }
+
+        .modal-content .cancel-btn {
+            background-color: #6c757d;
+        }
+
+        .modal-content .cancel-btn:hover {
+            background-color: #5a6268;
+        }
     </style>
+    <!-- 引入 Font Awesome 图标库（确保 integrity 值正确或移除） -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-p+Kq1jNqkPaXJ7G/uGQKz5FQvnYkVZgrZLE+9yK4GjY3rM+T09eA/qXUJeYYB+nG+/Z4xz3/hH8yGR+e7b1A4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-<div id="loginform">
-    <h1 id="login-title">用PMAtron，登录你的Mysql吧<span id="emoji">😊</span></h1>
+<div class="login-container">
+    <h1>用PMAtron 登录你的Mysql <i class="fas fa-database"></i> 吧</h1>
     <form id="loginForm">
-        <label for="input_username">用户名:</label>
-        <input type="text" name="username" id="input_username" value="root" required>
+        <!-- 自定义主机名下拉菜单 -->
+        <label for="custom_hostname">主机名:</label>
+        <div class="custom-select-wrapper">
+            <div class="custom-select" id="custom_hostname">
+                <span class="selected">请选择主机名</span>
+                <i class="fas fa-chevron-down arrow"></i>
+            </div>
+            <div class="custom-options">
+                <!-- 历史主机名将在此动态添加 -->
+            </div>
+        </div>
 
+        <!-- 自定义用户名下拉菜单 -->
+        <label for="custom_username">用户名:</label>
+        <div class="custom-select-wrapper">
+            <div class="custom-select" id="custom_username">
+                <span class="selected">请选择用户名</span>
+                <i class="fas fa-chevron-down arrow"></i>
+            </div>
+            <div class="custom-options">
+                <!-- 根据主机名动态添加相关用户名 -->
+            </div>
+        </div>
+
+        <!-- 密码输入框 -->
         <label for="input_password">密码:</label>
-        <input type="password" name="password" id="input_password" value="root" required>
+        <input type="password" name="password" id="input_password" required placeholder="请输入密码">
 
-        <button type="submit" id="loginButton">确定</button>
+        <!-- 确定按钮 -->
+        <button type="submit" id="loginButton"><i class="fas fa-sign-in-alt icon"></i>确定</button>
     </form>
 </div>
+
+<!-- 模态对话框 -->
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-title">添加新项</h2>
+        <input type="text" id="modal-input" placeholder="请输入内容">
+        <div style="text-align: right;">
+            <button id="modal-confirm">确定</button>
+            <button id="modal-cancel" class="cancel-btn">取消</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = document.getElementById('input_username').value;
-        const password = document.getElementById('input_password').value;
-        // 使用预加载脚本暴露的 API 发送更新请求
-        window.api.updateConfig(username, password);
+    // 获取表单元素
+    const customHostname = document.getElementById('custom_hostname');
+    const hostnameOptionsContainer = customHostname.nextElementSibling;
+    const customUsername = document.getElementById('custom_username');
+    const usernameOptionsContainer = customUsername.nextElementSibling;
+    const passwordInput = document.getElementById('input_password');
+    const loginForm = document.getElementById('loginForm');
+
+    // 模态对话框元素
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalInput = document.getElementById('modal-input');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const modalCancel = document.getElementById('modal-cancel');
+
+    let credentials = JSON.parse(localStorage.getItem('credentials')) || {};
+
+    let currentSelect = null; // 当前操作的下拉菜单
+
+    // 关闭所有自定义下拉菜单
+    function closeAllSelect(except = null) {
+        document.querySelectorAll('.custom-select').forEach(select => {
+            if (select !== except) {
+                select.classList.remove('open');
+            }
+        });
+        document.querySelectorAll('.custom-options').forEach(options => {
+            options.classList.remove('open');
+        });
+    }
+
+    // 显示模态对话框
+    function showModal(title, placeholder, callback) {
+        modalTitle.textContent = title;
+        modalInput.placeholder = placeholder;
+        modalInput.value = '';
+        modal.style.display = 'block';
+        modalInput.focus();
+
+        // 处理确定按钮
+        modalConfirm.onclick = () => {
+            const value = modalInput.value.trim();
+            if (value) {
+                callback(value);
+            }
+            modal.style.display = 'none';
+        };
+
+        // 处理取消按钮
+        modalCancel.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+
+    // 点击模态对话框外部关闭
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    };
+
+    // 加载历史主机名
+    function loadHostnames() {
+        hostnameOptionsContainer.innerHTML = '';
+        const hostnames = Object.keys(credentials);
+        if (hostnames.length === 0) {
+            const option = document.createElement('div');
+            option.classList.add('custom-option');
+            option.textContent = '无历史主机名';
+            option.style.pointerEvents = 'none';
+            hostnameOptionsContainer.appendChild(option);
+        } else {
+            hostnames.forEach(host => {
+                const option = document.createElement('div');
+                option.classList.add('custom-option');
+                option.textContent = host;
+                option.addEventListener('click', () => {
+                    setSelected(customHostname, host);
+                    loadUsernames(host);
+                    fillPassword(host, null);
+                    closeAllSelect();
+                });
+                hostnameOptionsContainer.appendChild(option);
+            });
+        }
+
+        // 添加一个选项用于添加新的主机名
+        const addNewOption = document.createElement('div');
+        addNewOption.classList.add('custom-option');
+        addNewOption.innerHTML = '<strong>添加新主机名</strong>';
+        addNewOption.addEventListener('click', () => {
+            closeAllSelect();
+            showModal('添加新主机名', '请输入新的主机名', (newHost) => {
+                if (!credentials[newHost]) {
+                    credentials[newHost] = {};
+                    localStorage.setItem('credentials', JSON.stringify(credentials));
+                    loadHostnames();
+                    setSelected(customHostname, newHost);
+                    loadUsernames(newHost);
+                    fillPassword(newHost, null);
+                } else {
+                    alert('主机名已存在。');
+                }
+            });
+        });
+        hostnameOptionsContainer.appendChild(addNewOption);
+    }
+
+    // 加载相关用户名
+    function loadUsernames(hostname) {
+        usernameOptionsContainer.innerHTML = '';
+        const usernames = credentials[hostname] ? Object.keys(credentials[hostname]) : [];
+        if (usernames.length === 0) {
+            const option = document.createElement('div');
+            option.classList.add('custom-option');
+            option.textContent = '无历史用户名';
+            option.style.pointerEvents = 'none';
+            usernameOptionsContainer.appendChild(option);
+        } else {
+            usernames.forEach(user => {
+                const option = document.createElement('div');
+                option.classList.add('custom-option');
+                option.textContent = user;
+                option.addEventListener('click', () => {
+                    setSelected(customUsername, user);
+                    fillPassword(hostname, user);
+                    closeAllSelect();
+                });
+                usernameOptionsContainer.appendChild(option);
+            });
+        }
+
+        // 添加一个选项用于添加新的用户名
+        const addNewOption = document.createElement('div');
+        addNewOption.classList.add('custom-option');
+        addNewOption.innerHTML = '<strong>添加新用户名</strong>';
+        addNewOption.addEventListener('click', () => {
+            closeAllSelect();
+            showModal('添加新用户名', '请输入新的用户名', (newUser) => {
+                if (!credentials[hostname][newUser]) {
+                    credentials[hostname][newUser] = '';
+                    localStorage.setItem('credentials', JSON.stringify(credentials));
+                    loadUsernames(hostname);
+                    setSelected(customUsername, newUser);
+                    fillPassword(hostname, newUser);
+                } else {
+                    alert('用户名已存在。');
+                }
+            });
+        });
+        usernameOptionsContainer.appendChild(addNewOption);
+    }
+
+    // 根据主机名和用户名填充密码
+    function fillPassword(hostname, username) {
+        if (credentials[hostname] && username && credentials[hostname][username]) {
+            passwordInput.value = credentials[hostname][username];
+        } else {
+            passwordInput.value = '';
+        }
+    }
+
+    // 设置选中的项
+    function setSelected(selectElement, value) {
+        const selectedSpan = selectElement.querySelector('.selected');
+        selectedSpan.textContent = value;
+    }
+
+    // 初始化主机名
+    loadHostnames();
+
+    // 点击自定义下拉菜单时切换选项显示
+    document.querySelectorAll('.custom-select').forEach(select => {
+        select.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = select.classList.contains('open');
+            closeAllSelect(select);
+            if (!isOpen) {
+                select.classList.add('open');
+                select.nextElementSibling.classList.add('open');
+            }
+        });
     });
 
+    // 处理表单提交
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const hostname = customHostname.querySelector('.selected').textContent.trim();
+        const username = customUsername.querySelector('.selected').textContent.trim();
+        const password = passwordInput.value.trim();
+
+        if (!hostname || !username || !password) {
+            alert('请填写所有必填字段。');
+            return;
+        }
+
+        // 更新配置文件
+        window.api.updateConfig({ hostname, username, password });
+
+        // 保存到历史记录
+        saveCredentials(hostname, username, password);
+    });
+
+    // 保存凭证到 localStorage
+    function saveCredentials(hostname, username, password) {
+        if (!credentials[hostname]) {
+            credentials[hostname] = {};
+        }
+
+        // 对于同一主机名和用户，只允许一个密码
+        credentials[hostname][username] = password;
+
+        localStorage.setItem('credentials', JSON.stringify(credentials));
+
+        // 重新加载主机名和用户名列表
+        loadHostnames();
+
+        // 自动选择刚保存的主机名和用户名
+        setSelected(customHostname, hostname);
+        loadUsernames(hostname);
+        setSelected(customUsername, username);
+        fillPassword(hostname, username);
+    }
+
+    // 监听配置更新成功事件
     window.api.onUpdateSuccess(() => {
         // 更新成功后跳转至根页面
         window.location.href = '/';
+    });
+
+    // 监听配置更新失败事件
+    window.api.onUpdateFailure((event, error) => {
+        alert('登录失败：' + error);
+        // 可在此处添加更多错误处理逻辑
+    });
+
+    // 点击页面其他地方关闭所有下拉菜单
+    document.addEventListener('click', () => {
+        closeAllSelect();
+    });
+
+    // 可选：在页面加载时，根据当前输入填充
+    window.addEventListener('DOMContentLoaded', () => {
+        const currentHost = customHostname.querySelector('.selected').textContent.trim();
+        if (currentHost && credentials[currentHost]) {
+            loadUsernames(currentHost);
+        }
     });
 </script>
 </body>

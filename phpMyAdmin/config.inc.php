@@ -32,3 +32,4 @@ $cfg['Servers'][$i]['controlpass'] = 'root';
 
 $cfg['UploadDir'] = '';
 $cfg['SaveDir'] = '';
+
