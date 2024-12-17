@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PMAtron 登录</title>
+    <style>
+        /* 全局样式 */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #007bff; /* phpMyAdmin 主要背景色为蓝色 */
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        /* 登录表单容器 */
+        #loginform {
+            background-color: #ffffff;
+            padding: 50px 40px;
+            border: 1px solid #cccccc;
+            width: 600px;
+            box-sizing: border-box;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 0; /* 非圆角 */
+        }
+
+        /* 标题样式 */
+        #loginform h1 {
+            margin-bottom: 30px;
+            font-size: 24px;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        /* 表单标签 */
+        #loginform label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333333;
+            font-size: 14px;
+        }
+
+        /* 输入框样式 */
+        #loginform input[type="text"],
+        #loginform input[type="password"] {
+            width: 100%;
+            padding: 12px 10px;
+            margin-bottom: 20px;
+            border: 1px solid #cccccc;
+            box-sizing: border-box;
+            font-size: 14px;
+            border-radius: 0; /* 非圆角 */
+        }
+
+        /* 确定按钮样式 */
+        #loginform button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 0; /* 非圆角 */
+            transition: background-color 0.3s ease;
+        }
+
+        #loginform button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 表情样式 */
+        #emoji {
+            font-size: 24px;
+            margin-left: 10px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 400px) {
+            #loginform {
+                width: 90%;
+                padding: 30px 20px;
+            }
+
+            #loginform h1 {
+                font-size: 20px;
+            }
+
+            #loginform button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="loginform">
+    <h1 id="login-title">用PMAtron，登录你的Mysql吧<span id="emoji">😊</span></h1>
+    <form id="loginForm">
+        <label for="input_username">用户名:</label>
+        <input type="text" name="username" id="input_username" value="root" required>
+
+        <label for="input_password">密码:</label>
+        <input type="password" name="password" id="input_password" value="root" required>
+
+        <button type="submit" id="loginButton">确定</button>
+    </form>
+</div>
+<script>
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const username = document.getElementById('input_username').value;
+        const password = document.getElementById('input_password').value;
+        // 使用预加载脚本暴露的 API 发送更新请求
+        window.api.updateConfig(username, password);
+    });
+
+    window.api.onUpdateSuccess(() => {
+        // 更新成功后跳转至根页面
+        window.location.href = '/';
+    });
+</script>
+</body>
+</html>

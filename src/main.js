@@ -1,4 +1,4 @@
-import {app, BrowserWindow, protocol} from 'electron'
+import {app, BrowserWindow, protocol, ipcMain} from 'electron'
 import path from 'path'
 import fs from 'fs'
 import {
@@ -44,16 +44,11 @@ const environment = {
 // Create preload script content
 const preloadScript = `
     const { contextBridge, ipcRenderer } = require('electron');
-    const jQuery = require('jquery');
-    
-    // Make jQuery available globally
-    window.jQuery = jQuery;
-    window.$ = jQuery;
-    
-    // Add other required globals
-    window.AJAX = {
-        cache: true
-    };
+    // preload.js
+    contextBridge.exposeInMainWorld('api', {
+        updateConfig: (username, password) => ipcRenderer.send('update-config', { username, password }),
+        onUpdateSuccess: (callback) => ipcRenderer.on('update-config-success', callback)
+    });
 `;
 
 export async function loadNodeRuntime(
@@ -183,11 +178,31 @@ async function createWindow() {
             });
 
             // Handle static files (including JavaScript files)
-            if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+            if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html') || url.pathname.endsWith('.png') || url.pathname.endsWith('.jpg')) {
                 const filePath = path.join(environment.server.path, url.pathname);
                 try {
+                    let contentType = 'text/plain';
+                    if (url.pathname.endsWith('.js')) {
+                        contentType = 'application/javascript';
+                    } else if (url.pathname.endsWith('.css')) {
+                        contentType = 'text/css';
+                    } else if (url.pathname.endsWith('.html')) {
+                        contentType = 'text/html';
+                        if (url.pathname.endsWith('login.html')) {
+                            const content = fs.readFileSync("D:\\workplace\\electron\\pmatron\\src\\login.html");
+                            return new Response(content, {
+                                headers: {
+                                    'Content-Type': contentType,
+                                    'Access-Control-Allow-Origin': '*'
+                                }
+                            });
+                        }
+                    } else if (url.pathname.endsWith('.png')) {
+                        contentType = 'image/png';
+                    } else if (url.pathname.endsWith('.jpg')) {
+                        contentType = 'image/jpeg';
+                    }
                     const content = fs.readFileSync(filePath);
-                    const contentType = url.pathname.endsWith('.js') ? 'application/javascript' : 'text/css';
                     return new Response(content, {
                         headers: {
                             'Content-Type': contentType,
@@ -238,7 +253,7 @@ async function createWindow() {
     });
 
     // Load initial page
-    await win.loadURL(`${environment.server.scheme}://${environment.server.host}/`);
+    await win.loadURL(`${environment.server.scheme}://${environment.server.host}/login.html`);
 
     if (environment.server.debug) {
         win.webContents.openDevTools();
@@ -250,6 +265,29 @@ async function createWindow() {
             fs.unlinkSync(preloadPath);
         } catch (err) {
             console.error('Error cleaning up preload script:', err);
+        }
+    });
+
+    // 监听来自渲染进程的更新config请求
+    ipcMain.on('update-config', (event, { username, password }) => {
+        try {
+            const configFilePath = path.join(environment.server.path, 'config.inc.php');
+            let configContent = fs.readFileSync(configFilePath, 'utf-8');
+
+            // 简单替换，这里假设原本的 $cfg['Servers'][$i]['user'] 、$cfg['Servers'][$i]['password'] 格式固定存在
+            configContent = configContent.replace(/\$cfg\['Servers'\]\[\$i\]\['user'\] = '.*?';/, `$cfg['Servers'][$i]['user'] = '${username}';`);
+            configContent = configContent.replace(/\$cfg\['Servers'\]\[\$i\]\['password'\] = '.*?';/, `$cfg['Servers'][$i]['password'] = '${password}';`);
+
+            fs.writeFileSync(configFilePath, configContent, 'utf-8');
+
+            // 通知渲染进程更新成功（可选）
+            event.sender.send('update-config-success');
+
+            // 更新完成后跳转至根页面
+            win.loadURL(`${environment.server.scheme}://${environment.server.host}/`);
+        } catch (err) {
+            console.error('Error updating config:', err);
+            // 可根据需要通知页面更新失败
         }
     });
 }
