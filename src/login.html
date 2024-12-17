@@ -529,10 +529,13 @@
         window.location.href = '/';
     });
 
-    // 监听配置更新失败事件
-    window.api.onUpdateFailure((event, error) => {
+    // 监听配置更新失败事件（需在主进程中发送失败事件）
+    window.api.onUpdateFailure((error) => {
         alert('登录失败：' + error);
-        // 可在此处添加更多错误处理逻辑
+        // 重新启用按钮
+        const loginButton = document.getElementById('loginButton');
+        loginButton.disabled = false;
+        loginButton.innerHTML = '<i class="fas fa-sign-in-alt icon"></i> 确定';
     });
 
     // 点击页面其他地方关闭所有下拉菜单

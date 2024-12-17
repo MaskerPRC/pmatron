@@ -47,7 +47,8 @@ const preloadScript = `
 
     contextBridge.exposeInMainWorld('api', {
         updateConfig: (credentials) => ipcRenderer.send('update-config', credentials),
-        onUpdateSuccess: (callback) => ipcRenderer.on('update-config-success', callback)
+        onUpdateSuccess: (callback) => ipcRenderer.on('update-config-success', callback),
+        onUpdateFailure: (callback) => ipcRenderer.on('update-config-failure', callback)
     });
 `;
 
@@ -287,7 +288,8 @@ async function createWindow() {
             win.loadURL(`${environment.server.scheme}://${environment.server.host}/`);
         } catch (err) {
             console.error('Error updating config:', err);
-            // 可根据需要通知页面更新失败
+            // 通知渲染进程更新失败
+            event.sender.send('update-config-failure', err.message);
         }
     });
 }
