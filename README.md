@@ -8,10 +8,10 @@
 PMAtron 是一款基于 Electron 的创新桌面应用，能在本地为你呈现完整的 phpMyAdmin 功能体验。它巧妙运用了 PHP-WASM 技术，让你无需传统 PHP 服务器环境即可直接享有 phpMyAdmin 的全部功能。
 
 #### 登录
-<img alt="img_1.png" src="img_1.png" width="500"/>
+<img alt="img_1.png" src="doc/img_1.png" width="500"/>
 
 #### MySQL GUI
-<img alt="img_2.png" src="img_2.png" width="500"/>
+<img alt="img_2.png" src="doc/img_2.png" width="500"/>
 
 ## ✨ 功能特色
 
@@ -29,7 +29,7 @@ PMAtron 为你重新定义使用 phpMyAdmin 的方式，带来：
 
 如果你对 PMAtron 项目有兴趣，想了解更多技术细节、交流使用经验或参与社区贡献，欢迎扫码加入我们的技术交流微信群。
 
-<img alt="img.png" src="img.png" width="300"/>
+<img alt="img.png" src="doc/img.png" width="300"/>
 
 入群你将获得：
 
