@@ -44,6 +44,11 @@ PMAtron 为你重新定义使用 phpMyAdmin 的方式，带来：
 
 运行 PMAtron 非常简单：
 
+#### 前置条件
+- 目前只支持windows
+- 下载phpMyAdmin解压到 phpMyAdmin目录 https://www.phpmyadmin.net/downloads/
+
+#### 安装依赖
 ```bash
 # 克隆仓库
 git clone https://github.com/maskerprc/pmatron.git

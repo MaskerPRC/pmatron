@@ -190,7 +190,7 @@ async function createWindow() {
                     } else if (url.pathname.endsWith('.html')) {
                         contentType = 'text/html';
                         if (url.pathname.endsWith('login.html')) {
-                            const content = fs.readFileSync("D:\\workplace\\electron\\pmatron\\src\\login.html");
+                            const content = fs.readFileSync(path.resolve("./src/login.html"));
                             return new Response(content, {
                                 headers: {
                                     'Content-Type': contentType,
