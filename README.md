@@ -29,7 +29,7 @@ PMAtron 为你重新定义使用 phpMyAdmin 的方式，带来：
 
 如果你对 PMAtron 项目有兴趣，想了解更多技术细节、交流使用经验或参与社区贡献，欢迎扫码加入我们的技术交流微信群。
 
-<img alt="img.png" src="doc/img.png" width="300"/>
+<img alt="img.png" src="https://github.com/user-attachments/assets/6d1983b9-5e99-4b7e-8839-1b5525e4813c" width="300"/>
 
 入群你将获得：
 
